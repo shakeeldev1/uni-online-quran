@@ -1,0 +1,32 @@
+# Users API Test
+# Make sure the backend server is running on http://localhost:5000
+
+### Get all users (requires authentication)
+GET http://localhost:5000/api/users
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Get user by ID (requires authentication)
+GET http://localhost:5000/api/users/USER_ID_HERE
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Update user (requires authentication)
+PUT http://localhost:5000/api/users/USER_ID_HERE
+Authorization: Bearer YOUR_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "username": "Updated Name",
+  "email": "updated@example.com",
+  "phone": "+1234567890",
+  "bio": "Updated bio",
+  "address": "Updated address",
+  "role": "user"
+}
+
+### Delete user (requires authentication)
+DELETE http://localhost:5000/api/users/USER_ID_HERE
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Toggle user status (requires authentication)
+PATCH http://localhost:5000/api/users/USER_ID_HERE/toggle-status
+Authorization: Bearer YOUR_TOKEN_HERE

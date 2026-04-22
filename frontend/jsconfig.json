@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "jsx": "preserve",     
+    "allowJs": true,   
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "exclude": ["node_modules"]
+}

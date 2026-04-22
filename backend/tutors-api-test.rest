@@ -1,0 +1,66 @@
+# Tutors API Test
+# Make sure the backend server is running on http://localhost:5000
+
+### Get all tutors (requires authentication)
+GET http://localhost:5000/api/tutors
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Get tutor by ID (requires authentication)
+GET http://localhost:5000/api/tutors/TUTOR_ID_HERE
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Create new tutor (requires authentication)
+POST http://localhost:5000/api/tutors
+Authorization: Bearer YOUR_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "username": "New Tutor",
+  "email": "newtutor@example.com",
+  "password": "password123",
+  "role": "Teacher",
+  "gender": "Male",
+  "experience": "3 Years",
+  "phone": "+1234567890",
+  "bio": "Experienced Quran teacher",
+  "address": "Test Address",
+  "qualifications": ["Islamic Studies Degree"],
+  "certifications": ["Tajweed Certificate"],
+  "teachingSubjects": ["Quran Reading", "Tajweed"],
+  "availableHours": "Morning and Evening"
+}
+
+### Update tutor (requires authentication)
+PUT http://localhost:5000/api/tutors/TUTOR_ID_HERE
+Authorization: Bearer YOUR_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "username": "Updated Tutor Name",
+  "email": "updated@example.com",
+  "role": "Qari",
+  "gender": "Male",
+  "experience": "5 Years",
+  "phone": "+1234567890",
+  "bio": "Updated bio",
+  "address": "Updated address",
+  "studentsAssigned": 10,
+  "reviews": 4.5
+}
+
+### Delete tutor (requires authentication)
+DELETE http://localhost:5000/api/tutors/TUTOR_ID_HERE
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Toggle tutor status (requires authentication)
+PATCH http://localhost:5000/api/tutors/TUTOR_ID_HERE/toggle-status
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Assign/remove students to tutor (requires authentication)
+PATCH http://localhost:5000/api/tutors/TUTOR_ID_HERE/assign-student
+Authorization: Bearer YOUR_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "increment": 1
+}

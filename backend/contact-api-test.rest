@@ -1,0 +1,55 @@
+### Test Contact Form API
+
+# Submit Contact Form (Public Route)
+POST http://localhost:5000/api/contact/submit
+Content-Type: application/json
+
+{
+  "name": "Ahmed Ali",
+  "fatherName": "Muhammad Ali",
+  "phone": "+923001234567",
+  "email": "ahmed.ali@example.com",
+  "message": "I want to learn Quran recitation with proper Tajweed. I am a beginner and looking for a qualified teacher who can guide me step by step."
+}
+
+###
+
+# Get All Contacts (Admin Only)
+GET http://localhost:5000/api/contact
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+
+###
+
+# Get All Contacts with Filters (Admin Only)
+GET http://localhost:5000/api/contact?status=new&page=1&limit=5
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+
+###
+
+# Search Contacts (Admin Only)
+GET http://localhost:5000/api/contact?search=ahmed
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+
+###
+
+# Get Contact by ID (Admin Only)
+GET http://localhost:5000/api/contact/CONTACT_ID
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+
+###
+
+# Update Contact Status (Admin Only)
+PUT http://localhost:5000/api/contact/CONTACT_ID
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+Content-Type: application/json
+
+{
+  "status": "contacted",
+  "adminNotes": "Called the student, scheduled for tomorrow 3 PM"
+}
+
+###
+
+# Delete Contact (Admin Only)
+DELETE http://localhost:5000/api/contact/CONTACT_ID
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN

@@ -1,0 +1,105 @@
+### ✅ Admin Signup
+POST http://localhost:5000/api/auth/admin/signup
+Content-Type: application/json
+
+{
+  "username": "user",
+  "email": "test@example.com",
+  "password": "12345678"
+}
+
+### ✅ User Signup (Sends OTP to Email)
+POST http://localhost:5000/api/auth/signup
+Content-Type: application/json
+
+{
+  "username": "user",
+  "email": "user@example.com",
+  "password": "12345"
+}
+
+### ✅ Verify Email with OTP
+POST http://localhost:5000/api/auth/verify-otp
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "otp": "180730"
+}
+
+### ✅ Resend OTP
+POST http://localhost:5000/api/auth/resend-otp
+Content-Type: application/json
+
+{
+  "email": "user@gmail.com"
+}
+
+### ✅ User/Admin Login (Only Works if Email is Verified)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@gmail.com",
+  "password": "123456"
+}
+
+### ✅ Get My Profile
+GET http://localhost:5000/api/protected/profile
+Authorization: Bearer <access token>
+
+### ✅ Edit My Profile
+PUT http://localhost:5000/api/auth/profile
+Authorization: Bearer <access token>
+Content-Type: application/json
+
+{
+  "username": "Admin new",
+  "bio": "i am new admin"
+}
+
+### ✅ Verify Email Change (OTP)
+POST http://localhost:5000/api/auth/verify-email-change
+Authorization: Bearer <access token>
+
+{
+  "otp": "750884"
+}
+
+### ✅ User Logout
+POST http://localhost:5000/api/auth/logout
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "refreshToken": "current-token-on-login"
+}
+
+### ✅ Change Password (While Logged In)
+POST http://localhost:5000/api/auth/change-password
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "currentPassword": "12345",
+  "newPassword": "54321"
+}
+
+### ✅ Forgot Password (Request Reset Link)
+POST http://localhost:5000/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "user@gmail.com"
+}
+
+### ✅ Reset Password (Via Reset Link)
+POST http://localhost:5000/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "user@gmail.com",
+  "otp": "578991",
+  "newPassword": "1234567"
+}
+////////////////////*******************************************************////////////////////
