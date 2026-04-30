@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
+import { AuthContext } from "../../context/AuthContext";
 
 // Initialize Stripe with the publishable key from environment variable
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -31,13 +32,18 @@ const conversionToUSD = {
 };
 
 // Inner form component that uses Stripe hooks
-const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
+const PaymentForm = ({ plan, currency, onClose, onSuccess }) => {
+  const { user } = useContext(AuthContext);
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState("idle"); // idle, processing, success, failure
+
+  // Get customer name and email from logged-in user
+  const customerName = user?.username || "Guest";
+  const customerEmail = user?.email || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,8 +73,8 @@ const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
           amount: Math.round(feeInUSD * 100) / 100, // Amount in dollars (backend multiplies by 100)
           currency: currencyConfig[currency].currency,
           planName: plan.name,
-          customerName: userData.name,
-          customerEmail: userData.email,
+          customerName: customerName,
+          customerEmail: customerEmail,
           metadata: {
             planName: plan.name,
             customerName: userData.name,
@@ -106,8 +112,8 @@ const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
           payment_method: {
             card: elements.getElement(CardElement),
             billing_details: {
-              name: userData.name,
-              email: userData.email,
+              name: customerName,
+              email: customerEmail,
             },
           },
         }
@@ -139,8 +145,8 @@ const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
               instructorRole: plan.instructorRole || "Teacher",
               paymentIntentId: paymentIntent.id,
               studentData: {
-                fullName: userData.name,
-                email: userData.email,
+                fullName: customerName,
+                email: customerEmail,
               },
             }),
           });
