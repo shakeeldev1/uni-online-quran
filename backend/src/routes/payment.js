@@ -101,6 +101,13 @@ router.post("/create-payment-intent", async (req, res) => {
       });
     }
 
+    console.log("Creating payment intent with:", {
+      amount: smallestUnitAmount,
+      currency,
+      planName,
+      customerEmail,
+    });
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: smallestUnitAmount,
       currency: currency,
@@ -122,12 +129,25 @@ router.post("/create-payment-intent", async (req, res) => {
       receipt_email: customerEmail,
     });
 
+    console.log("Payment intent created successfully:", paymentIntent.id);
+
+    if (!paymentIntent.client_secret) {
+      console.error("ERROR: Payment intent created but has no client_secret!", paymentIntent);
+      return res.status(500).json({ error: "Failed to generate client secret" });
+    }
+
     res.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
     });
   } catch (error) {
-    console.error("Stripe Error:", error);
+    console.error("Stripe Error details:", {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+      type: error.type,
+      param: error.param,
+    });
     res.status(500).json({ error: error.message });
   }
 });

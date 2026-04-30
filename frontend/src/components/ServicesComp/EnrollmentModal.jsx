@@ -5,8 +5,17 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import { enrollmentsAPI } from "../../features/enrollmentsAPI";
 import { toast } from "react-toastify";
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// Initialize Stripe with the publishable key from environment variable
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripePublishableKey) {
+  console.error("VITE_STRIPE_PUBLISHABLE_KEY is not set in environment variables");
+}
+
+// Create stripe promise once at module level
+const stripePromise = stripePublishableKey
+  ? loadStripe(stripePublishableKey)
+  : Promise.reject(new Error("Stripe key not configured"));
 
 // Payment Form Component
 const CoursePaymentForm = ({ course, formData, onSuccess, onCancel }) => {
@@ -32,13 +41,13 @@ const CoursePaymentForm = ({ course, formData, onSuccess, onCancel }) => {
       const priceValue = parseFloat(course.price.toString().replace(/[^\d.-]/g, "")) || 99;
 
       // Create payment intent
-      const response = await fetch(`${API_BASE_URL}/api/create-payment-intent`, {
+      const response = await fetch(`${API_BASE_URL}/create-payment-intent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: priceValue,
+          amount: priceValue, // Amount in dollars (backend multiplies by 100)
           currency: "usd",
           planName: course.title,
           customerName: formData.name,
@@ -58,10 +67,17 @@ const CoursePaymentForm = ({ course, formData, onSuccess, onCancel }) => {
         }),
       });
 
-      const { clientSecret, error: backendError } = await response.json();
+      const data = await response.json();
+      const { clientSecret, error: backendError } = data;
 
-      if (backendError) {
-        throw new Error(backendError);
+      if (!response.ok || backendError) {
+        console.error("Backend error response:", data);
+        throw new Error(backendError || `Backend error: ${response.status}`);
+      }
+
+      if (!clientSecret) {
+        console.error("Missing clientSecret in response:", data);
+        throw new Error("Payment initialization failed - no client secret received from server");
       }
 
       // Confirm payment
