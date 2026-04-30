@@ -54,4 +54,14 @@ export const enrollmentsAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Get user enrollments by email (for user dashboard)
+  getUserEnrollments: async (email) => {
+    try {
+      const response = await API.get(`/enrollments/user/${email}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
