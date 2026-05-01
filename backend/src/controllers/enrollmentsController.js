@@ -228,6 +228,39 @@ export const deleteEnrollment = async (req, res) => {
   }
 };
 
+// Get enrollments by user email (for user dashboard)
+export const getEnrollmentsByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const enrollments = await Enrollment.find({
+      "studentData.email": email.toLowerCase(),
+    })
+      .populate("courseId", "title category level duration instructor")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "User enrollments retrieved successfully",
+      data: enrollments,
+    });
+  } catch (error) {
+    console.error("Error getting user enrollments:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve user enrollments",
+      error: error.message,
+    });
+  }
+};
+
 // Get enrollments by course
 export const getEnrollmentsByCourse = async (req, res) => {
   try {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { LogOut, UserIcon, LayoutDashboard } from "lucide-react";
+import { LogOut, UserIcon, LayoutDashboard, BookOpen } from "lucide-react";
 
 const ProfileCircle = () => {
   const [user, setUser] = useState(
@@ -88,6 +88,17 @@ const ProfileCircle = () => {
           >
             <UserIcon className="h-4 w-4 text-gray-600" />
             Edit Profile
+          </button>
+
+          <button
+            onClick={() => {
+              navigate("/my-enrollments");
+              setDropdownOpen(false);
+            }}
+            className="w-full px-5 py-3.5 text-left flex items-center gap-2 font-medium text-gray-700 transition-all duration-200 hover:bg-[#F2FEF8] hover:text-[#0E7C5A] hover:pl-6"
+          >
+            <BookOpen className="h-4 w-4 text-gray-600" />
+            My Enrollments
           </button>
 
           {isAdmin && (

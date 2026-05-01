@@ -1,11 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
+import { AuthContext } from "../../context/AuthContext";
 
 // Initialize Stripe with the publishable key from environment variable
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripePublishableKey) {
+  console.error("VITE_STRIPE_PUBLISHABLE_KEY is not set in environment variables");
+}
+
+// Create stripe promise once at module level
+const stripePromise = stripePublishableKey 
+  ? loadStripe(stripePublishableKey)
+  : Promise.reject(new Error("Stripe key not configured"));
 
 // Currency configurations
 const currencyConfig = {
@@ -22,13 +32,18 @@ const conversionToUSD = {
 };
 
 // Inner form component that uses Stripe hooks
-const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
+const PaymentForm = ({ plan, currency, onClose, onSuccess }) => {
+  const { user } = useContext(AuthContext);
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState("idle"); // idle, processing, success, failure
+
+  // Get customer name and email from logged-in user
+  const customerName = user?.username || "Guest";
+  const customerEmail = user?.email || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,17 +64,17 @@ const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
       // Create payment intent on the backend
       // Use relative path for both development and production
       const API_BASE_URL = import.meta.env.VITE_API_URL || "";
-      const response = await fetch(`${API_BASE_URL}/api/create-payment-intent`, {
+      const response = await fetch(`${API_BASE_URL}/create-payment-intent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: Math.round(feeInUSD * 100), // Stripe uses cents
+          amount: Math.round(feeInUSD * 100) / 100, // Amount in dollars (backend multiplies by 100)
           currency: currencyConfig[currency].currency,
           planName: plan.name,
-          customerName: userData.name,
-          customerEmail: userData.email,
+          customerName: customerName,
+          customerEmail: customerEmail,
           metadata: {
             planName: plan.name,
             customerName: userData.name,
@@ -77,10 +92,17 @@ const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
         }),
       });
 
-      const { clientSecret, error: backendError } = await response.json();
+      const data = await response.json();
+      const { clientSecret, error: backendError } = data;
 
-      if (backendError) {
-        throw new Error(backendError);
+      if (!response.ok || backendError) {
+        console.error("Backend error response:", data);
+        throw new Error(backendError || `Backend error: ${response.status}`);
+      }
+
+      if (!clientSecret) {
+        console.error("Missing clientSecret in response:", data);
+        throw new Error("Payment initialization failed - no client secret received from server");
       }
 
       // Confirm the payment with Stripe
@@ -90,8 +112,8 @@ const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
           payment_method: {
             card: elements.getElement(CardElement),
             billing_details: {
-              name: userData.name,
-              email: userData.email,
+              name: customerName,
+              email: customerEmail,
             },
           },
         }
@@ -108,27 +130,30 @@ const PaymentForm = ({ plan, currency, userData, onClose, onSuccess }) => {
         // Create enrollment in backend after successful payment
         try {
           const API_BASE_URL = import.meta.env.VITE_API_URL || "";
-          const enrollmentResponse = await fetch(`${API_BASE_URL}/api/create-enrollment-from-payment`, {
+          const enrollmentResponse = await fetch(`${API_BASE_URL}/enrollments`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              paymentIntentId: paymentIntent.id,
-              customerName: userData.name,
-              customerEmail: userData.email,
-              courseName: plan.name,
+              courseId: plan._id || "",
+              courseName: plan.name || "Quran Course",
               price: plan.fee,
               duration: plan.duration || "3 Months",
               sessions: plan.sessions || "24",
               instructor: plan.instructor || "To be assigned",
               instructorRole: plan.instructorRole || "Teacher",
+              paymentIntentId: paymentIntent.id,
+              studentData: {
+                fullName: customerName,
+                email: customerEmail,
+              },
             }),
           });
           
           const enrollmentData = await enrollmentResponse.json();
-          if (enrollmentData.success) {
-            console.log("✅ Enrollment created:", enrollmentData.enrollment);
+          if (enrollmentData.success || enrollmentData._id) {
+            console.log("✅ Enrollment created:", enrollmentData);
             toast.success("Enrollment created successfully!");
           } else if (enrollmentData.message !== "Enrollment already exists for this payment") {
             console.warn("⚠️ Enrollment creation note:", enrollmentData.message);

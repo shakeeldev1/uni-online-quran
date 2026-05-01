@@ -1,12 +1,22 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useContext } from "react";
 import { X, User, Mail, Phone, MapPin, Clock, BookOpen, Award, Users, CheckCircle2, CreditCard } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { enrollmentsAPI } from "../../features/enrollmentsAPI";
+import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// Initialize Stripe with the publishable key from environment variable
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripePublishableKey) {
+  console.error("VITE_STRIPE_PUBLISHABLE_KEY is not set in environment variables");
+}
+
+// Create stripe promise once at module level
+const stripePromise = stripePublishableKey
+  ? loadStripe(stripePublishableKey)
+  : Promise.reject(new Error("Stripe key not configured"));
 
 // Payment Form Component
 const CoursePaymentForm = ({ course, formData, onSuccess, onCancel }) => {
@@ -32,13 +42,13 @@ const CoursePaymentForm = ({ course, formData, onSuccess, onCancel }) => {
       const priceValue = parseFloat(course.price.toString().replace(/[^\d.-]/g, "")) || 99;
 
       // Create payment intent
-      const response = await fetch(`${API_BASE_URL}/api/create-payment-intent`, {
+      const response = await fetch(`${API_BASE_URL}/create-payment-intent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: priceValue,
+          amount: priceValue, // Amount in dollars (backend multiplies by 100)
           currency: "usd",
           planName: course.title,
           customerName: formData.name,
@@ -58,10 +68,17 @@ const CoursePaymentForm = ({ course, formData, onSuccess, onCancel }) => {
         }),
       });
 
-      const { clientSecret, error: backendError } = await response.json();
+      const data = await response.json();
+      const { clientSecret, error: backendError } = data;
 
-      if (backendError) {
-        throw new Error(backendError);
+      if (!response.ok || backendError) {
+        console.error("Backend error response:", data);
+        throw new Error(backendError || `Backend error: ${response.status}`);
+      }
+
+      if (!clientSecret) {
+        console.error("Missing clientSecret in response:", data);
+        throw new Error("Payment initialization failed - no client secret received from server");
       }
 
       // Confirm payment
@@ -196,9 +213,11 @@ const CoursePaymentForm = ({ course, formData, onSuccess, onCancel }) => {
 };
 
 const EnrollmentModal = ({ course, onClose }) => {
+  const { user } = useContext(AuthContext);
+  
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
+    name: user?.username || "",
+    email: user?.email || "",
     phone: "",
     age: "",
     gender: "Male",
@@ -509,6 +528,17 @@ const EnrollmentModal = ({ course, onClose }) => {
           ) : (
             // Enrollment Form Tab
             <form ref={formRef} onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Login Status Notice */}
+              {user && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-blue-900">Using your registered account</p>
+                    <p className="text-sm text-blue-700">Name and email are pre-filled from your account</p>
+                  </div>
+                </div>
+              )}
+
               {/* Personal Information Section */}
               <div>
                 <h3 className="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
@@ -516,20 +546,45 @@ const EnrollmentModal = ({ course, onClose }) => {
                   Personal Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Name - Read Only */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Full Name <span className="text-red-500">*</span>
                     </label>
+                    <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 flex items-center">
+                      <span>{formData.name || "N/A"}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">From your registered account</p>
+                  </div>
+
+                  {/* Email - Read Only */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email <span className="text-red-500">*</span>
+                    </label>
+                    <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 flex items-center">
+                      <span>{formData.email || "N/A"}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">From your registered account</p>
+                  </div>
+
+                  {/* Phone - Editable */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
                     <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-gray-50 hover:bg-white"
-                      placeholder="Enter your full name"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-white"
+                      placeholder="Enter your phone number"
                     />
                   </div>
+
+                  {/* Age - Editable */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Age <span className="text-red-500">*</span>
@@ -542,10 +597,12 @@ const EnrollmentModal = ({ course, onClose }) => {
                       required
                       min="5"
                       max="100"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-gray-50 hover:bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-white"
                       placeholder="Your age"
                     />
                   </div>
+
+                  {/* Gender - Editable */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Gender
@@ -554,13 +611,15 @@ const EnrollmentModal = ({ course, onClose }) => {
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-gray-50 hover:bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-white"
                     >
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Other">Other</option>
                     </select>
                   </div>
+
+                  {/* Previous Experience - Editable */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Previous Experience
@@ -569,7 +628,7 @@ const EnrollmentModal = ({ course, onClose }) => {
                       name="previousExperience"
                       value={formData.previousExperience}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-gray-50 hover:bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-white"
                     >
                       <option value="Beginner">Beginner</option>
                       <option value="Intermediate">Intermediate</option>

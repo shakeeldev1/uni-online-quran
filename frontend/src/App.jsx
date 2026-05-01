@@ -63,6 +63,7 @@ import ScrollToTop from "./pages/ScrollToTop";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import MyEnrollments from "./pages/MyEnrollments";
 
 // ===== Layouts =====
 const MainLayout = () => (
@@ -136,6 +137,14 @@ const router = createBrowserRouter([
       { path: "courses/quran-translation", element: <QuranInterpretation /> },
       { path: "/privacypolicy", element: <PrivacyPolicy /> },
       { path: "/terms", element: <TermsOfService /> },
+      { 
+        path: "/my-enrollments", 
+        element: (
+          <ProtectedRoute>
+            <MyEnrollments />
+          </ProtectedRoute>
+        ) 
+      },
     ],
   },
   { path: "/login", element: <Login /> },

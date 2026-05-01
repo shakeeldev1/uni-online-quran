@@ -6,6 +6,7 @@ import {
   updateEnrollmentStatus,
   deleteEnrollment,
   getEnrollmentsByCourse,
+  getEnrollmentsByEmail,
   getEnrollmentStats,
 } from "../controllers/enrollmentsController.js";
 import { adminAuth, requireAdmin } from "../middleware/adminAuth.js";
@@ -17,6 +18,9 @@ const router = express.Router();
 // ========================================
 // Create new enrollment (student enrollment from frontend form)
 router.post("/", createEnrollment);
+
+// Get user enrollments by email (for user dashboard)
+router.get("/user/:email", getEnrollmentsByEmail);
 
 // ========================================
 // ADMIN ROUTES (Authentication required)
