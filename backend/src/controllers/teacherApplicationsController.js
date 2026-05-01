@@ -1,5 +1,7 @@
 import TeacherApplication from "../models/TeacherApplication.js";
 import { uploadFile } from "../utils/cloudinary.js";
+import Tutor from "../models/Tutor.js";
+import bcrypt from "bcrypt";
 
 // Get all teacher applications (for admin dashboard)
 export const getAllApplications = async (req, res) => {
@@ -205,6 +207,43 @@ export const updateApplicationStatus = async (req, res) => {
         success: false,
         message: "Application not found",
       });
+    }
+
+    // If approving, create a Tutor record if one doesn't already exist
+    if (status === "approved") {
+      // Only create tutor if not already created for this email
+      const existingTutor = await Tutor.findOne({ email: application.email });
+
+      if (!existingTutor) {
+        // Generate a random temporary password
+        const tempPassword = Math.random().toString(36).slice(-10) || "TempPass123";
+        const hashed = await bcrypt.hash(tempPassword, 10);
+
+        // Map application fields to tutor fields
+        const tutorData = {
+          username: application.fullName || application.email.split('@')[0],
+          email: application.email,
+          password: hashed,
+          gender: application.gender || "Male",
+          experience: application.experience || "0 Years",
+          phone: application.whatsapp || "",
+          bio: application.about || "",
+          address: application.address || "",
+          teachingSubjects: application.courses || [],
+          profileImage: application.certificate || application.cv || "",
+        };
+
+        try {
+          const newTutor = new Tutor(tutorData);
+          await newTutor.save();
+          // Optionally link tutor by setting userId (if a User exists with same email this could be changed)
+          application.userId = newTutor._id;
+        } catch (tutorCreateErr) {
+          console.error("Error creating Tutor on application approval:", tutorCreateErr);
+          // continue - we still mark application as approved but report tutor creation error in notes
+          application.notes = (application.notes || "") + "\nTutor creation error: " + tutorCreateErr.message;
+        }
+      }
     }
 
     application.status = status;
