@@ -32,7 +32,7 @@ const conversionToUSD = {
 };
 
 // Inner form component that uses Stripe hooks
-const PaymentForm = ({ plan, currency, onClose, onSuccess }) => {
+const PaymentForm = ({ plan, currency, onClose, onSuccess, userData }) => {
   const { user } = useContext(AuthContext);
   const stripe = useStripe();
   const elements = useElements();
@@ -41,9 +41,9 @@ const PaymentForm = ({ plan, currency, onClose, onSuccess }) => {
   const [error, setError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState("idle"); // idle, processing, success, failure
 
-  // Get customer name and email from logged-in user
-  const customerName = user?.username || "Guest";
-  const customerEmail = user?.email || "";
+  // Get customer name and email from logged-in user or form data
+  const customerName = userData?.name?.trim() || user?.username || "Guest";
+  const customerEmail = userData?.email?.trim() || user?.email || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,12 +57,15 @@ const PaymentForm = ({ plan, currency, onClose, onSuccess }) => {
     setError(null);
 
     try {
-      // Convert the plan fee to USD (Stripe's base currency)
       const feeInPKR = plan.fee;
-      const feeInUSD = feeInPKR * conversionToUSD[currency];
+      const priceInSelectedCurrency =
+        currency === "PKR"
+          ? feeInPKR
+          : feeInPKR * conversionToUSD[currency];
+
+      const amountForStripe = Math.round(priceInSelectedCurrency * 100) / 100;
 
       // Create payment intent on the backend
-      // Use relative path for both development and production
       const API_BASE_URL = import.meta.env.VITE_API_URL || "";
       const response = await fetch(`${API_BASE_URL}/create-payment-intent`, {
         method: "POST",
@@ -70,22 +73,22 @@ const PaymentForm = ({ plan, currency, onClose, onSuccess }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: Math.round(feeInUSD * 100) / 100, // Amount in dollars (backend multiplies by 100)
+          amount: amountForStripe,
           currency: currencyConfig[currency].currency,
           planName: plan.name,
           customerName: customerName,
           customerEmail: customerEmail,
           metadata: {
             planName: plan.name,
-            customerName: userData.name,
-            customerEmail: userData.email,
+            customerName,
+            customerEmail,
             originalCurrency: currency,
             originalAmount: plan.fee,
             courseId: plan._id || "",
             courseName: plan.name || "Quran Course",
             instructor: plan.instructor || "To be assigned",
             instructorRole: plan.instructorRole || "Teacher",
-            price: plan.fee || feeInUSD.toFixed(2),
+            price: priceInSelectedCurrency,
             duration: plan.duration || "3 Months",
             sessions: plan.sessions || "24",
           },
@@ -204,10 +207,10 @@ const PaymentForm = ({ plan, currency, onClose, onSuccess }) => {
           <span className="font-medium">Amount:</span> {plan.fee} {currencyConfig[currency].symbol}
         </p>
         <p className="text-sm text-gray-600">
-          <span className="font-medium">Name:</span> {userData.name}
+          <span className="font-medium">Name:</span> {customerName}
         </p>
         <p className="text-sm text-gray-600">
-          <span className="font-medium">Email:</span> {userData.email}
+          <span className="font-medium">Email:</span> {customerEmail}
         </p>
       </div>
 

@@ -10,7 +10,6 @@ import {
   Home,
 } from "lucide-react";
 
-// fetched profile
 const Profile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
@@ -36,22 +35,23 @@ const Profile = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Fetch profile
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await API.get("/protected/profile");
-        const user = res.data?.user || res.data;
-        console.log("Fetched profile:", user);
+  const fetchProfile = async () => {
+    try {
+      const res = await API.get("protected/profile");
+      const user = res.data?.user || res.data;
+      console.log("Fetched profile:", user);
 
-        setProfile(user);
-        setFormData((prev) => ({ ...prev, ...user }));
-      } catch (error) {
-        setMessage({
-          type: "error",
-          text: error.response?.data?.message || "Please login again",
-        });
-      }
-    };
+      setProfile(user);
+      setFormData((prev) => ({ ...prev, ...user }));
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Please login again",
+      });
+    }
+  };
+
+  useEffect(() => {
     fetchProfile();
   }, []);
 
@@ -119,14 +119,16 @@ const Profile = () => {
     formDataUpload.append("profileImage", file);
 
     try {
-      const res = await API.put("/auth/profile", formDataUpload, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setProfile(res.data.user);
-      setFormData((prev) => ({ ...prev, ...res.data.user }));
-      setUser(res.data.user);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      window.dispatchEvent(new Event("storage")); // trigger update if Navbar listens
+      const res = await API.put("auth/profile", formDataUpload);
+      if (res.data.user) {
+        setProfile(res.data.user);
+        setFormData((prev) => ({ ...prev, ...res.data.user }));
+        setUser(res.data.user);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        window.dispatchEvent(new Event("storage"));
+      } else {
+        await fetchProfile();
+      }
 
       setMessage({ type: "success", text: "Profile picture updated!" });
     } catch (error) {
@@ -149,17 +151,21 @@ const Profile = () => {
       let payload = {};
       if (editingField) payload[editingField] = formData[editingField];
 
-      const res = await API.put("/auth/profile", payload);
+      const res = await API.put("auth/profile", payload);
 
       if (res.data.user) {
         setProfile(res.data.user);
         setFormData((prev) => ({ ...prev, ...res.data.user }));
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        window.dispatchEvent(new Event("storage"));
+      } else {
+        await fetchProfile();
       }
 
       if (payload.email && res.data.message.includes("OTP")) {
         setEmailOtpStep(true);
         setOtpTimer(60);
-        setPendingEmail(profile.email); // store the email awaiting verification
+        setPendingEmail(profile.email);
         startOtpTimer();
       }
 
@@ -186,9 +192,16 @@ const Profile = () => {
       const res = await API.post("/auth/verify-email-change", {
         otp: formData.otp,
       });
-      setProfile(res.data.user);
+      if (res.data.user) {
+        setProfile(res.data.user);
+        setFormData((prev) => ({ ...prev, ...res.data.user, otp: "" }));
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        window.dispatchEvent(new Event("storage"));
+      } else {
+        await fetchProfile();
+        setFormData((prev) => ({ ...prev, otp: "" }));
+      }
       setEmailOtpStep(false);
-      setFormData({ ...formData, otp: "" });
       setMessage({ type: "success", text: "Email updated successfully!" });
     } catch (error) {
       setMessage({
